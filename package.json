@@ -1,0 +1,11 @@
+{
+  "name": "instrum",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha test"
+  },
+  "author": "Scott Ivey",
+  "license": "MIT"
+}
