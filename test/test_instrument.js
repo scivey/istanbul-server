@@ -78,12 +78,19 @@ describe('instrumentLib', function() {
                 send: sinon.stub()
             };
             var next = sinon.stub();
-            var req = {};
+            var req = {
+                url: 'js/someScript.js'
+            };
             match.onCall(0).returns(false)
                 .onCall(1).returns(true);
             middleware(req, res, next);
             assert.notOk(res.send.called);
             assert.ok(next.called);
+
+            middleware(req, res, next);
+            assert.ok(res.send.called);
+            assert.ok(next.calledOnce);
+            sinon.assert.calledWith(loadInstrumentedFile, '/some/dir/js/someScript.js');
         });
     });
     describe('getFilledCollector', function() {
