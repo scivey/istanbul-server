@@ -1,9 +1,10 @@
+'use strict';
 var path = require('path');
 var _ = require('underscore');
 
 var inSrc = function() {
     var shallow = true;
-    var args = _.flatten([__dirname, '../src', arguments], shallow);
+    var args = _.flatten([__dirname, '../lib', arguments], shallow);
     return path.join.apply(null, args);
 };
 
@@ -38,10 +39,12 @@ describe('instrumentLib', function() {
             istanbulInstrument = stub(istanbul.Instrumenter.prototype, 'instrument');
         });
         it('works', function(done) {
-            istanbulInstrument.callsArgWith(1, 'instrumentedCode');
+            istanbulInstrument.callsArgWith(1, null, 'instrumentedCode');
             var code = 'var x = 5; x++; console.log(x);';
             instrumentLib.instrument(code, function(err, res) {
                 assert.ok(istanbulInstrument.called);
+                assert.isNull(err);
+                assert.equal(res, 'instrumentedCode');
                 done();
             });
             assert.ok(istanbulInstrument.called);
@@ -105,6 +108,7 @@ describe('instrumentLib', function() {
             var mockData = [5, 7];
             Collector.returns(mockCollector);
             var collector = instrumentLib.getFilledCollector(mockData);
+            assert.equal(mockCollector, collector);
             assert.equal(mockCollector.add.callCount, 2);
         });
     });
@@ -133,7 +137,7 @@ describe('instrumentLib', function() {
         });
     });
     describe('summarizeCoverage', function() {
-        var getFileCoverageForItems, summarizeFile, getFilledCollector;
+        var getFileCoverageForItems, summarizeFile;
         beforeEach(function() {
             getFileCoverageForItems = stub(instrumentLib, 'getFileCoverageForItems');
             summarizeFile = stub(istanbul.utils, 'summarizeFileCoverage');

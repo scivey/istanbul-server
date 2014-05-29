@@ -1,4 +1,4 @@
-var sinon = require('sinon');
+'use strict';
 var chai = require('chai');
 var assert = chai.assert;
 var path = require('path');
@@ -6,14 +6,14 @@ var _ = require('underscore');
 
 var inSrc = function() {
     var shallow = true;
-    var args = _.flatten([__dirname, '../src', arguments], shallow);
+    var args = _.flatten([__dirname, '../lib', arguments], shallow);
     return path.join.apply(null, args);
 };
 
-//var main = require(inSrc('main.js'));
+var server = require(inSrc('server'));
 
-describe('something', function() {
+describe('server', function() {
     it('works', function() {
-        assert.ok(true);
+        assert.ok(server);
     });
 });
