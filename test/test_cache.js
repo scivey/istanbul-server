@@ -155,6 +155,75 @@ describe('GetCache', function() {
             sinon.assert.calledWith(cache.pending.has, 'foo');
         });
     });
+    describe('#getExternal', function() {
+        it('is a stub for external resource fetch', function(done) {
+            cache.getExternal('foo', function(err, res) {
+                assert.isNull(err);
+                assert.equal(res, 'external_value_for_foo');
+                done();
+            });
+        });
+    });
+    describe('#_deferFromCache', function() {
+        it('returns from the store on nextTick', function(done) {
+            cache.store.get = sinon.stub()
+                .withArgs('foo').returns('foo_value');
+
+            cache._deferFromCache('foo', function(err, res) {
+                assert.isNull(err);
+                assert.equal(res, 'foo_value');
+                done();
+            });
+        });
+    });
+    describe('#_getAndCache', function() {
+        beforeEach(function() {
+            cache.getExternal = sinon.stub();
+            cache._unsetPending = sinon.stub();
+            cache.store.put = sinon.stub();
+            cache._emitLoadEvent = sinon.stub();
+        });
+        it('calls #getExternal; caches and returns the result', function(done) {
+            cache.getExternal.callsArgWith(1, null, 'foo_value');
+            cache._getAndCache('foo', function(err, res) {
+                assert.isNull(err);
+                assert.equal(res, 'foo_value');
+                sinon.assert.calledWith(cache.store.put, 'foo', 'foo_value');
+                sinon.assert.calledWith(cache._unsetPending, 'foo');
+                sinon.assert.calledWith(cache.getExternal, 'foo');
+                sinon.assert.calledWith(cache._emitLoadEvent, 'foo', null, 'foo_value');
+                done();
+            });
+        });
+        it('does not cache if #getExternal returns an error.', function(done) {
+            cache.getExternal.callsArgWith(1, 'an error');
+            cache._getAndCache('foo', function(err, res) {
+                assert.equal(err, 'an error');
+                assert.isUndefined(res);
+                sinon.assert.notCalled(cache.store.put);
+                sinon.assert.calledWith(cache._unsetPending, 'foo');
+                sinon.assert.calledWith(cache.getExternal, 'foo');
+                sinon.assert.calledWithExactly(cache._emitLoadEvent, 'foo', 'an error', undefined);
+                done();
+            });
+        });
+    });
+    describe('#emitLoadEvent', function() {
+        it('emits `loaded:[key]` and `loaded` events', function() {
+            cache.emit = sinon.stub();
+            cache._emitLoadEvent('foo', null, 'foo_result');
+            sinon.assert.calledTwice(cache.emit);
+            sinon.assert.calledWith(cache.emit, 'load:foo', null, 'foo_result');
+            sinon.assert.calledWith(cache.emit, 'load', 'foo', null, 'foo_result');
+        });
+        it('does the same for an error.', function() {
+            cache.emit = sinon.stub();
+            cache._emitLoadEvent('foo', 'foo_related_err');
+            sinon.assert.calledTwice(cache.emit);
+            sinon.assert.calledWithExactly(cache.emit, 'load:foo', 'foo_related_err', undefined);
+            sinon.assert.calledWithExactly(cache.emit, 'load', 'foo', 'foo_related_err', undefined);
+        });
+    });
     describe('#_ensureLoading', function() {
         it('if load already pending, has no effect', function() {
             cache._isPending = sinon.stub()
