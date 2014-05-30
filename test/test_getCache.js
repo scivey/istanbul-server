@@ -12,7 +12,7 @@ var inLib = function() {
     return path.join.apply(null, args);
 };
 
-var cacheModule = require(inLib('cache'));
+var cacheModule = require(inLib('getCache'));
 
 describe('WatchEmitter', function() {
     var originalWatch;
