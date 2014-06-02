@@ -1,6 +1,5 @@
 'use strict';
 var chai = require('chai');
-var fs = require('fs');
 var sinon = require('sinon');
 var assert = chai.assert;
 var path = require('path');
@@ -13,32 +12,6 @@ var inLib = function() {
 };
 
 var cacheModule = require(inLib('getCache'));
-
-describe('WatchEmitter', function() {
-    var originalWatch;
-    var WatchEmitter = cacheModule.WatchEmitter;
-    beforeEach(function() {
-        originalWatch = cacheModule._watch;
-        sinon.stub(cacheModule, '_watch');
-    });
-    afterEach(function() {
-        cacheModule._watch.restore();
-    });
-    it('uses `watch`', function() {
-        assert.equal(originalWatch, require('node-watch'));
-    });
-    it('triggers events from `watch` callbacks.', function(done) {
-        var emitter = new WatchEmitter('/some/directory');
-        var watchCall = cacheModule._watch.getCall(0).args;
-        assert.equal(watchCall[0], '/some/directory');
-        var watchCallback = watchCall[1];
-        emitter.on('change', function(changed) {
-            assert.equal('changed_file', changed);
-            done();    
-        });
-        watchCallback('changed_file');
-    });
-});
 
 describe('Store', function() {
     var Store = cacheModule.Store;
@@ -67,7 +40,7 @@ describe('Store', function() {
             assert.deepEqual({
                 foo: 11
             }, store._store);
-            store.put('bar', 12)
+            store.put('bar', 12);
             assert.deepEqual({
                 foo: 11,
                 bar: 12
@@ -274,66 +247,5 @@ describe('GetCache', function() {
             sinon.assert.called(cache._ensureLoading, 'foo');
         });
     });
-
-
-// GetCache.fn = GetCache.prototype;
-
-// GetCache.fn._setPending = function(key) {
-//     this.pendin.put(key, true);
-// };
-
-// GetCache.fn._unsetPending = function(key) {
-//     this.pending.del(key);
-// };
-
-// GetCache.fn._isPending = function(key) {
-//     return this.pending.has(key);
-// };
-
-// GetCache.fn._deferFromCache = function(key, callback) {
-//     var value = this.store.get(key);
-//     process.nextTick(function() {
-//         callback(null, value);
-//     });
-// };
-
-// GetCache.fn._emitLoadEvent = function(key, err, value) {
-//     this.emit('load:' + key, err, value);
-//     this.emit('load', key, err, value);
-// };
-
-// GetCache.fn._getAndCache = function(key, callback) {
-//     var self = this;
-//     this.getExternal(key, function(err, value) {
-//         self._unsetPending(key);
-//         if (!err) {
-//             self.store.put(key, value);
-//         }
-//         self._emitLoadEvent(key, err, value);
-//     });
-// };
-
-// GetCache.fn._ensureLoading = function(key) {
-//     if (!this.isPending(key)) {
-//         this.setPending(key);
-//         this._getAndCache(key);
-//     }
-// };
-
-// GetCache.fn.getExternal = function(key, callback) {
-//     // to be overridden
-//     var value = 'external_value_for_' + key;
-//     process.nextTick(function() {
-//         callback(null, value);
-//     });
-// };
-
-// GetCache.fn.get = function(key, callback) {
-//     if (this.store.has(key)) {
-//         return this._deferFromCache(key, callback);
-//     }
-//     this.once('load:' + key, callback);
-//     this.ensureLoading(key);
-// };
 
 });
