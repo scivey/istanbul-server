@@ -1,0 +1,2 @@
+console.warn('bar');
+
