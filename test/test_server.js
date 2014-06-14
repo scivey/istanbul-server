@@ -110,8 +110,9 @@ describe('server', function() {
                 });
             });
             describe('POST /api/summarize route', function() {
-                var req, res, summary;
+                var req, res, summary, makeSummarizeMiddleware;
                 beforeEach(function() {
+                    makeSummarizeMiddleware = stub(middlewareLib, 'makeSummarizeMiddleware');
                     req = {
                         body: 'foo'
                     };
@@ -123,37 +124,16 @@ describe('server', function() {
                         summary: true
                     };
                 });
-                it('returns 200 and the summary when summarizing succeeds.', function() {
+                it('uses the function returned by #makeSummarizeMiddleware', function() {
+                    var summarizeMiddleware = sinon.stub();
+                    makeSummarizeMiddleware.returns(summarizeMiddleware);
                     var app = server.create({
                         rootDir: '/some/dir'
                     });
-                    assert.equal(app, mockApp);
-                    sinon.assert.notCalled(app.post);
+                    sinon.assert.notCalled(makeSummarizeMiddleware);
                     app.useIstanbul();
-                    sinon.assert.calledWithMatch(app.post, '/api/summarize', sinon.match.func);
-                    var handler = app.post.getCall(0).args[1];
-                    sinon.assert.notCalled(summarizeCoverage);
-                    var err = null;
-                    summarizeCoverage.callsArgWith(1, err, summary);
-                    handler(req, res);
-                    sinon.assert.calledWith(res.status, 200);
-                    sinon.assert.calledWith(res.send, summary);
-                });
-                it('returns 400 and a malformed request error when summarizing does not succeed.', function() {
-                    var app = server.create({
-                        rootDir: '/some/dir'
-                    });
-                    assert.equal(app, mockApp);
-                    sinon.assert.notCalled(app.post);
-                    app.useIstanbul();
-                    sinon.assert.calledWithMatch(app.post, '/api/summarize', sinon.match.func);
-                    var handler = app.post.getCall(0).args[1];
-                    sinon.assert.notCalled(summarizeCoverage);
-                    var err = {err: true};
-                    summarizeCoverage.callsArgWith(1, err, summary);
-                    handler(req, res);
-                    sinon.assert.calledWith(res.status, 400);
-                    sinon.assert.calledWithMatch(res.send, {err: 'Malformed request.'});
+                    sinon.assert.called(makeSummarizeMiddleware);
+                    sinon.assert.calledWith(app.post, '/api/summarize', summarizeMiddleware);
                 });
             });
 

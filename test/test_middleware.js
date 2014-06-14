@@ -30,7 +30,7 @@ describe('middleware', function() {
             aStub.restore();
         });
     });
-    describe('#determineResponse', function() {
+    describe('#determineInstrumentResponse', function() {
         var res, instrumented;
         beforeEach(function() {
             res = {
@@ -41,13 +41,13 @@ describe('middleware', function() {
         });
         it('returns 500 and the error if errors are found.', function() {
             var err = {err: true};
-            middlewareLib.determineResponse(res, err, instrumented);
+            middlewareLib.determineInstrumentResponse(res, err, instrumented);
             sinon.assert.calledWith(res.statusCode, 500);
             sinon.assert.calledWith(res.send, err);
         });
         it('returns 200 and the source if no error returned.', function() {
             var err = null;
-            middlewareLib.determineResponse(res, err, instrumented);
+            middlewareLib.determineInstrumentResponse(res, err, instrumented);
             sinon.assert.calledWith(res.statusCode, 200);
             sinon.assert.calledWith(res.send, instrumented);
         });
@@ -92,7 +92,7 @@ describe('middleware', function() {
         beforeEach(function() {
             stubs = {};
             stubs.loadInstrumentedFile = stub(instrumentLib, 'loadInstrumentedFile');
-            _.each(['joiner', 'matchOrNext', 'determineResponse'], function(method) {
+            _.each(['joiner', 'matchOrNext', 'determineInstrumentResponse'], function(method) {
                 stubs[method] = stub(middlewareLib, method);
             });
             joinFunc = sinon.stub();
@@ -141,7 +141,55 @@ describe('middleware', function() {
             var err = {err: true};
             var instrumented = {instrumented: true};
             instrumentCallback(err, instrumented);
-            sinon.assert.calledWith(stubs.determineResponse, res, err, instrumented);
+            sinon.assert.calledWith(stubs.determineInstrumentResponse, res, err, instrumented);
+        });
+    });
+    describe('#determineSummarizeResponse', function() {
+        var res, summary;
+        beforeEach(function() {
+            res = {
+                send: sinon.stub(),
+                statusCode: sinon.stub()
+            };
+            summary = {summary: true};
+        });
+        it('works', function() {
+            var err = {err: true};
+            middlewareLib.determineSummarizeResponse(res, err, summary);
+            sinon.assert.calledWith(res.statusCode, 400);
+            sinon.assert.calledWith(res.send, err);
+        });
+        it('works', function() {
+            var err = null;
+            middlewareLib.determineSummarizeResponse(res, err, summary);
+            sinon.assert.calledWith(res.statusCode, 200);
+            sinon.assert.calledWith(res.send, summary);
+        });
+    });
+    describe('#makeSummarizeMiddleware', function() {
+        var summarizeCoverage, determineSummarizeResponse, req, res;
+        beforeEach(function() {
+            req = {
+                body: {body: true}
+            };
+            res = {
+                res: true
+            };
+            determineSummarizeResponse = stub(middlewareLib, 'determineSummarizeResponse');
+            summarizeCoverage = stub(instrumentLib, 'summarizeCoverage');
+        });
+        it('returns a function', function() {
+            var middleware = middlewareLib.makeSummarizeMiddleware();
+            assert.isFunction(middleware);
+        });
+        it('tries to summarize the request body and then passes response to #determineSummarizeResponse', function() {
+            var middleware = middlewareLib.makeSummarizeMiddleware();
+            var summary = {summary: true};
+            var err = {err: true};
+            summarizeCoverage.callsArgWith(1, err, summary);
+            middleware(req, res);
+            sinon.assert.calledWithMatch(summarizeCoverage, [req.body], sinon.match.func);
+            sinon.assert.calledWith(determineSummarizeResponse, res, err, summary);
         });
     });
 });
