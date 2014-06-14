@@ -1,5 +1,3 @@
--- Add caching into the instrumentation middleware (caching already exists; just needs to be integrated.);
-
 -- Functional / integration tests.
     -- Server does not re-instrument unchanged files on request (if caching enabled)
     -- errors in script instrumenting / coverage summarization don't crash the server.
