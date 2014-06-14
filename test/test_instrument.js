@@ -42,12 +42,10 @@ describe('instrumentLib', function() {
             istanbulInstrument.callsArgWith(1, null, 'instrumentedCode');
             var code = 'var x = 5; x++; console.log(x);';
             instrumentLib.instrument(code, function(err, res) {
-                assert.ok(istanbulInstrument.called);
                 assert.isNull(err);
                 assert.equal(res, 'instrumentedCode');
                 done();
-            });
-            assert.ok(istanbulInstrument.called);
+            });            
         });
     });
     describe('loadInstrumentedFile', function() {
@@ -56,7 +54,17 @@ describe('instrumentLib', function() {
             readFile = stub(fs, 'readFile');
             instrument = stub(instrumentLib, 'instrument');
         });
-        it('works', function(done) {
+        it('does not call #instrument on fs error', function(done) {
+            var err = {err: true};
+            readFile.callsArgWith(2, err, null);
+            instrumentLib.loadInstrumentedFile('foo.js', function(e, res) {
+                assert.equal(e, err);
+                assert.notOk(res);
+                sinon.assert.notCalled(instrument);
+                done();
+            });
+        });
+        it('instruments on successful fs#read', function(done) {
             readFile.callsArgWith(2, null, 'something');
             instrument.callsArgWith(1, null, 'instrumented code');
             instrumentLib.loadInstrumentedFile('foo.js', function(err, res) {
@@ -65,37 +73,7 @@ describe('instrumentLib', function() {
             });
         });
     });
-    describe('makeInstrumentMiddleware', function() {
-        var loadInstrumentedFile;
-        beforeEach(function() {
-            loadInstrumentedFile = stub(instrumentLib, 'loadInstrumentedFile');
-        });
-        it('works', function() {
-            loadInstrumentedFile.callsArgWith(1, null, 'instrumented code');
-            var match = sinon.stub();
-            var middleware = instrumentLib.makeInstrumentMiddleware({
-                rootDir: '/some/dir',
-                match: match
-            });
-            var res = {
-                send: sinon.stub()
-            };
-            var next = sinon.stub();
-            var req = {
-                url: 'js/someScript.js'
-            };
-            match.onCall(0).returns(false)
-                .onCall(1).returns(true);
-            middleware(req, res, next);
-            assert.notOk(res.send.called);
-            assert.ok(next.called);
 
-            middleware(req, res, next);
-            assert.ok(res.send.called);
-            assert.ok(next.calledOnce);
-            sinon.assert.calledWith(loadInstrumentedFile, '/some/dir/js/someScript.js');
-        });
-    });
     describe('getFilledCollector', function() {
         var Collector;
         beforeEach(function() {

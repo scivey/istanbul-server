@@ -5,6 +5,7 @@ var path = require('path');
 var sinon = require('sinon');
 var _ = require('underscore');
 var instrument = require ('../lib/instrument');
+var middlewareLib = require('../lib/middleware');
 
 var inSrc = function() {
     var shallow = true;
@@ -52,7 +53,7 @@ describe('server', function() {
         beforeEach(function() {
             express = stub(server, '_express');
             connect = stub(server, '_connect');
-            makeInstrumentMiddleware = stub(instrument, 'makeInstrumentMiddleware');
+            makeInstrumentMiddleware = stub(middlewareLib, 'makeInstrumentMiddleware');
             summarizeCoverage = stub(instrument, 'summarizeCoverage');
             mockApp = {
                 use: sinon.stub(),
