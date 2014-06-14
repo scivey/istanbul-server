@@ -2,7 +2,9 @@
 var chai = require('chai');
 var assert = chai.assert;
 var path = require('path');
+var sinon = require('sinon');
 var _ = require('underscore');
+var instrument = require ('../lib/instrument');
 
 var inSrc = function() {
     var shallow = true;
@@ -12,8 +14,148 @@ var inSrc = function() {
 
 var server = require(inSrc('server'));
 
-describe('server', function() {
+describe('server', function() {   
+    var stub;
+    beforeEach(function() {
+        var stubs = this._stubs = [];
+        stub = function(ref, method) {
+            var aStub = sinon.stub(ref, method);
+            stubs.push(aStub);
+            return aStub;
+        };
+    });
+    afterEach(function() {
+        _.each(this._stubs, function(aStub) {
+            aStub.restore();
+        });
+    });
+    describe('defaults:match', function() {
+        it('works', function() {
+            var goodReq = {
+                url: 'something/script.js'
+            };
+            assert.isTrue(server.defaults.match(goodReq));
+
+            var badReq = {
+                url: 'something/foo.css'
+            };
+            assert.isFalse(server.defaults.match(badReq));
+        });
+    });
     it('works', function() {
         assert.ok(server);
+    });
+    describe('#create', function() {
+        var express, connect, mockApp, jsonMiddleware;
+        var makeInstrumentMiddleware, instrumentMiddleware;
+        var summarizeCoverage;
+        beforeEach(function() {
+            express = stub(server, '_express');
+            connect = stub(server, '_connect');
+            makeInstrumentMiddleware = stub(instrument, 'makeInstrumentMiddleware');
+            summarizeCoverage = stub(instrument, 'summarizeCoverage');
+            mockApp = {
+                use: sinon.stub(),
+                post: sinon.stub()
+            };
+            jsonMiddleware = {
+                jsonMiddleware: true
+            };
+            connect.json = sinon.stub()
+                .returns(jsonMiddleware);
+            express.returns(mockApp);
+            instrumentMiddleware = {
+                insta: true
+            };
+            makeInstrumentMiddleware.returns(instrumentMiddleware);
+        });
+        it('returns an express app.', function() {
+            var app = server.create({
+                rootDir: '/some/dir'
+            });
+            assert.equal(app, mockApp);
+            sinon.assert.calledWith(app.use, jsonMiddleware);
+        });
+        describe('#useIstanbul', function() {
+            it('installs instrumentation middleware', function() {
+                var app = server.create({
+                    rootDir: '/some/dir'
+                });
+                assert.equal(app, mockApp);
+                sinon.assert.notCalled(app.post);
+                sinon.assert.calledWith(app.use, jsonMiddleware);
+                sinon.assert.calledOnce(app.use); 
+                app.useIstanbul();
+                sinon.assert.calledWith(app.use, instrumentMiddleware);
+                sinon.assert.calledWithMatch(makeInstrumentMiddleware, {
+                    rootDir: '/some/dir'
+                });
+            });
+            it('accepts an optional `match` function which overrides the default', function() {
+                var match = function() {};
+                var app = server.create({
+                    rootDir: '/some/dir',
+                    match: match
+                });
+                assert.equal(app, mockApp);
+                sinon.assert.notCalled(app.post);
+                sinon.assert.calledWith(app.use, jsonMiddleware);
+                sinon.assert.calledOnce(app.use); 
+                app.useIstanbul();
+                sinon.assert.calledWith(app.use, instrumentMiddleware);
+                sinon.assert.calledWithMatch(makeInstrumentMiddleware, {
+                    rootDir: '/some/dir',
+                    match: match
+                });
+            });
+            describe('POST /api/summarize route', function() {
+                var req, res, summary;
+                beforeEach(function() {
+                    req = {
+                        body: 'foo'
+                    };
+                    res = {
+                        status: sinon.stub(),
+                        send: sinon.stub()
+                    };
+                    summary = {
+                        summary: true
+                    };
+                });
+                it('returns 200 and the summary when summarizing succeeds.', function() {
+                    var app = server.create({
+                        rootDir: '/some/dir'
+                    });
+                    assert.equal(app, mockApp);
+                    sinon.assert.notCalled(app.post);
+                    app.useIstanbul();
+                    sinon.assert.calledWithMatch(app.post, '/api/summarize', sinon.match.func);
+                    var handler = app.post.getCall(0).args[1];
+                    sinon.assert.notCalled(summarizeCoverage);
+                    var err = null;
+                    summarizeCoverage.callsArgWith(1, err, summary);
+                    handler(req, res);
+                    sinon.assert.calledWith(res.status, 200);
+                    sinon.assert.calledWith(res.send, summary);
+                });
+                it('returns 400 and a malformed request error when summarizing does not succeed.', function() {
+                    var app = server.create({
+                        rootDir: '/some/dir'
+                    });
+                    assert.equal(app, mockApp);
+                    sinon.assert.notCalled(app.post);
+                    app.useIstanbul();
+                    sinon.assert.calledWithMatch(app.post, '/api/summarize', sinon.match.func);
+                    var handler = app.post.getCall(0).args[1];
+                    sinon.assert.notCalled(summarizeCoverage);
+                    var err = {err: true};
+                    summarizeCoverage.callsArgWith(1, err, summary);
+                    handler(req, res);
+                    sinon.assert.calledWith(res.status, 400);
+                    sinon.assert.calledWithMatch(res.send, {err: 'Malformed request.'});
+                });
+            });
+
+        });
     });
 });
