@@ -36,7 +36,7 @@ describe('middleware', function() {
         var res, instrumented;
         beforeEach(function() {
             res = {
-                statusCode: sinon.stub(),
+                status: sinon.stub(),
                 send: sinon.stub()
             };
             instrumented = {instrumented: true};
@@ -44,13 +44,13 @@ describe('middleware', function() {
         it('returns 500 and the error if errors are found.', function() {
             var err = {err: true};
             middlewareLib.determineInstrumentResponse(res, err, instrumented);
-            sinon.assert.calledWith(res.statusCode, 500);
+            sinon.assert.calledWith(res.status, 500);
             sinon.assert.calledWith(res.send, err);
         });
         it('returns 200 and the source if no error returned.', function() {
             var err = null;
             middlewareLib.determineInstrumentResponse(res, err, instrumented);
-            sinon.assert.calledWith(res.statusCode, 200);
+            sinon.assert.calledWith(res.status, 200);
             sinon.assert.calledWith(res.send, instrumented);
         });
     });
@@ -154,7 +154,7 @@ describe('middleware', function() {
             match = sinon.stub();
             res = {
                 send: sinon.stub(),
-                statusCode: sinon.stub()
+                status: sinon.stub()
             };
             next = sinon.stub();
             req = {
@@ -235,20 +235,20 @@ describe('middleware', function() {
         beforeEach(function() {
             res = {
                 send: sinon.stub(),
-                statusCode: sinon.stub()
+                status: sinon.stub()
             };
             summary = {summary: true};
         });
         it('works', function() {
             var err = {err: true};
             middlewareLib.determineSummarizeResponse(res, err, summary);
-            sinon.assert.calledWith(res.statusCode, 400);
+            sinon.assert.calledWith(res.status, 400);
             sinon.assert.calledWith(res.send, err);
         });
         it('works', function() {
             var err = null;
             middlewareLib.determineSummarizeResponse(res, err, summary);
-            sinon.assert.calledWith(res.statusCode, 200);
+            sinon.assert.calledWith(res.status, 200);
             sinon.assert.calledWith(res.send, summary);
         });
     });
