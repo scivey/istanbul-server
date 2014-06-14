@@ -8,6 +8,8 @@ var inSrc = function() {
     return path.join.apply(null, args);
 };
 
+var istanbulCache = require('../lib/istanbulCache');
+
 var instrumentLib = require(inSrc('instrument.js'));
 var middlewareLib = require('../lib/middleware');
 var chai = require('chai');
@@ -86,18 +88,69 @@ describe('middleware', function() {
             assert.equal(joined, 'JOINED_PATH');
         });
     });
-    describe('makeInstrumentMiddleware', function() {
-        var stubs, match, joinFunc;
-        var req, res, next;
+    describe('NonCachedInstrumenter', function() {
+        var stubs, joinFunc;
         beforeEach(function() {
             stubs = {};
             stubs.loadInstrumentedFile = stub(instrumentLib, 'loadInstrumentedFile');
-            _.each(['joiner', 'matchOrNext', 'determineInstrumentResponse'], function(method) {
-                stubs[method] = stub(middlewareLib, method);
-            });
+            stubs.joiner = stub(middlewareLib, 'joiner');
             joinFunc = sinon.stub();
             stubs.joiner
-                .withArgs('/some/dir').returns(joinFunc);
+                .withArgs('/root/dir').returns(joinFunc);
+        });
+        describe('construction', function() {
+            it('works', function() {
+                var rootDir = '/root/dir';
+                var instrumenter = new middlewareLib.NonCachedInstrumenter(rootDir);
+                assert.equal(instrumenter.inRootDir, joinFunc);
+            });
+        });
+        describe('#get', function() {
+            it('works', function() {
+                var rootDir = '/root/dir';
+                joinFunc.withArgs('foo.js').returns('mapped_path.js');
+                var instrumenter = new middlewareLib.NonCachedInstrumenter(rootDir);
+                assert.equal(instrumenter.inRootDir, joinFunc);
+                var err = {err: true};
+                var instrumented = {instrumented: true};
+                stubs.loadInstrumentedFile.callsArgWith(1, err, instrumented);
+                instrumenter.get('foo.js', function(e, i) {
+                    assert.equal(e, err);
+                    assert.equal(i, instrumented);
+                    sinon.assert.calledWithMatch(stubs.loadInstrumentedFile, 'mapped_path.js', sinon.match.func);
+                });
+            });
+        });
+    });
+    describe('#getInstrumenter', function() {
+        beforeEach(function() {
+
+            // prevent the fs-watch from starting
+            stub(istanbulCache.IstanbulCache.prototype, 'initialize');
+        });
+        it('returns an IstanbulCache if `shouldCache` is true.', function() {
+            var shouldCache = true;
+            var rootDir = '/root/dir';
+            var srcDir = 'src';
+            var instrumenter = middlewareLib.getInstrumenter(shouldCache, rootDir, srcDir);
+            assert.instanceOf(instrumenter, istanbulCache.IstanbulCache);
+        });
+        it('returns a NonCachedInstrumenter if `shouldCache` is false.', function() {
+            var shouldCache = false;
+            var rootDir = '/root/dir';
+            var srcDir = 'src';
+            var instrumenter = middlewareLib.getInstrumenter(shouldCache, rootDir, srcDir);
+            assert.instanceOf(instrumenter, middlewareLib.NonCachedInstrumenter);
+        });
+    });
+    describe('makeInstrumentMiddleware', function() {
+        var stubs, match;
+        var req, res, next;
+        beforeEach(function() {
+            stubs = {};
+            _.each(['matchOrNext', 'determineInstrumentResponse', 'getInstrumenter'], function(method) {
+                stubs[method] = stub(middlewareLib, method);
+            });
             match = sinon.stub();
             res = {
                 send: sinon.stub(),
@@ -108,39 +161,72 @@ describe('middleware', function() {
                 url: 'js/someScript.js'
             };
         });
-        it('joins request urls with its `rootDir` setting', function() {
-            var middleware = middlewareLib.makeInstrumentMiddleware({
-                rootDir: '/some/dir'
-            });
+        it('calls #getInstrumenter to get its instrumenting function', function() {
+            var rootDir = '/some/dir';
+            var sourceDir = '/some/dir/src';
+            var cache = true;
+            var params = {
+                rootDir: rootDir,
+                sourceDir: sourceDir,
+                cache: cache
+            };
+            var instrumenter = {
+                get: sinon.stub()
+            };
+            stubs.getInstrumenter
+                .withArgs(cache, rootDir, sourceDir).returns(instrumenter);
+            var middleware = middlewareLib.makeInstrumentMiddleware(params);
             assert.isFunction(middleware);
-            sinon.assert.calledWith(stubs.joiner, '/some/dir');
+            sinon.assert.called(stubs.getInstrumenter);
         });
         it('calls `matchOrNext` with its `match` setting and the request, and does nothing if it returns false.', function() {
-            var middleware = middlewareLib.makeInstrumentMiddleware({
-                rootDir: '/some/dir',
-                match: match
-            });
+            var rootDir = '/some/dir';
+            var sourceDir = '/some/dir/src';
+            var cache = true;
+            var params = {
+                rootDir: rootDir,
+                sourceDir: sourceDir,
+                cache: cache
+            };
+            var instrumenter = {
+                get: sinon.stub()
+            };
+            stubs.getInstrumenter
+                .withArgs(cache, rootDir, sourceDir).returns(instrumenter);
+            var middleware = middlewareLib.makeInstrumentMiddleware(params);
+            sinon.assert.called(stubs.getInstrumenter);
             stubs.matchOrNext
                 .withArgs(match, req, next).returns(false);
             middleware(req, res, next);
-            sinon.assert.notCalled(joinFunc);
-            sinon.assert.notCalled(stubs.loadInstrumentedFile);
-            sinon.assert.calledWith(stubs.matchOrNext, match, req, next);
+            sinon.assert.notCalled(instrumenter.get);
         });
         it('instruments and calls callback if `matchOrNext` returns true.', function() {
-            var middleware = middlewareLib.makeInstrumentMiddleware({
-                rootDir: '/some/dir',
-                match: match
-            });
-            stubs.matchOrNext
-                .withArgs(match, req, next).returns(true);
-            joinFunc.withArgs(req.url).returns('requested_file.js');
-            middleware(req, res, next);
-            sinon.assert.calledWithMatch(stubs.loadInstrumentedFile, 'requested_file.js', sinon.match.func);
-            var instrumentCallback = stubs.loadInstrumentedFile.getCall(0).args[1];
+            var rootDir = '/some/dir';
+            var sourceDir = '/some/dir/src';
+            var cache = true;
+            var params = {
+                rootDir: rootDir,
+                sourceDir: sourceDir,
+                cache: cache
+            };
+            var instrumenter = {
+                get: sinon.stub()
+            };
+
             var err = {err: true};
             var instrumented = {instrumented: true};
-            instrumentCallback(err, instrumented);
+            instrumenter.get
+                .callsArgWith(1, err, instrumented);
+
+            stubs.getInstrumenter
+                .withArgs(cache, rootDir, sourceDir).returns(instrumenter);
+
+            stubs.matchOrNext.returns(true);
+
+            var middleware = middlewareLib.makeInstrumentMiddleware(params);
+
+            middleware(req, res, next);
+            sinon.assert.calledWithMatch(instrumenter.get, req.url, sinon.match.func);
             sinon.assert.calledWith(stubs.determineInstrumentResponse, res, err, instrumented);
         });
     });
@@ -192,4 +278,5 @@ describe('middleware', function() {
             sinon.assert.calledWith(determineSummarizeResponse, res, err, summary);
         });
     });
+
 });
