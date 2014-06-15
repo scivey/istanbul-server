@@ -1,2 +1,2 @@
-console.warn('foo');
+console.warn('this is foo.js');
 

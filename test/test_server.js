@@ -47,12 +47,12 @@ describe('server', function() {
         assert.ok(server);
     });
     describe('#create', function() {
-        var express, connect, mockApp, jsonMiddleware;
+        var express, bodyParser, mockApp, jsonMiddleware;
         var makeInstrumentMiddleware, instrumentMiddleware;
         var summarizeCoverage;
         beforeEach(function() {
             express = stub(server, '_express');
-            connect = stub(server, '_connect');
+            bodyParser = stub(server, '_bodyParser');
             makeInstrumentMiddleware = stub(middlewareLib, 'makeInstrumentMiddleware');
             summarizeCoverage = stub(instrument, 'summarizeCoverage');
             mockApp = {
@@ -62,7 +62,7 @@ describe('server', function() {
             jsonMiddleware = {
                 jsonMiddleware: true
             };
-            connect.json = sinon.stub()
+            bodyParser.json = sinon.stub()
                 .returns(jsonMiddleware);
             express.returns(mockApp);
             instrumentMiddleware = {

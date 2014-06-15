@@ -1,2 +1,2 @@
-console.warn('bar');
+console.warn('this is bar.js');
 

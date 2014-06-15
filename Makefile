@@ -1,9 +1,12 @@
-.PHONY: lint test
+.PHONY: lint test-unit test-integration
 
-main: test
+main: test-unit
 
-test: lint
+test-unit: lint
 	npm test
+
+test-integration:
+	mocha -R spec ./integration_tests
 
 lint:
 	grunt jshint
