@@ -6,6 +6,7 @@ var sinon = require('sinon');
 var _ = require('underscore');
 var request = require('request');
 var async = require('async');
+var morgan = require('morgan');
 var connect = require('connect');
 var fs = require('fs');
 
@@ -82,10 +83,11 @@ describe('Server - integration test', function() {
             sourceDir: getSourceDir(),
             match: function(req) {
                 return req.url.indexOf('/js/') !== -1;
-            }
+            },
+            cache: true
         });
 
-        app.use(connect.logger('dev'));
+        app.use(morgan({format: 'dev'}));
         app.useIstanbul();
         app.use(connect.static(getRootDir()));
         app.listen(PORTNUM)
