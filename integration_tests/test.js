@@ -2,7 +2,6 @@
 var chai = require('chai');
 var assert = chai.assert;
 var path = require('path');
-var sinon = require('sinon');
 var _ = require('underscore');
 var request = require('request');
 var async = require('async');
@@ -14,19 +13,15 @@ var server = require('../lib/server');
 
 var getTestDataDir = function() {
     return path.join(__dirname, '../test_data');
-}
+};
 
 var getRootDir = function() {
     return path.join(getTestDataDir(), 'public');
 };
 
 var getSourceDir = function() {
-    return path.join(getRootDir(), 'js')
+    return path.join(getRootDir(), 'js');
 };
-
-console.warn(getRootDir());
-
-
 
 var PORTNUM = 9008;
 var inServer = function(urlPart) {
@@ -90,7 +85,7 @@ describe('Server - integration test', function() {
         app.use(morgan({format: 'dev'}));
         app.useIstanbul();
         app.use(connect.static(getRootDir()));
-        app.listen(PORTNUM)
+        app.listen(PORTNUM);
         setTimeout(function() {
             done();
         }, 1500);
@@ -105,9 +100,11 @@ describe('Server - integration test', function() {
                 var barBody = bodies[0];
                 assert.ok(contains(barBody, 'this is bar.js'));
                 assert.ok(isInstrumented(barBody));
+                assert.ok(contains(barBody, '/js/bar.js'));
                 var fooBody = bodies[1];
                 assert.ok(contains(fooBody, 'this is foo.js'));
                 assert.ok(isInstrumented(fooBody));
+                assert.ok(contains(fooBody, '/js/foo.js'));
                 done();
             });
         });

@@ -108,7 +108,7 @@ describe('IstanbulCache', function() {
 
             var aCallback = {callback: true};
             cache.getExternal('external_resource', aCallback);
-            sinon.assert.calledWith(loadInstrumentedFile, 'mapped_resource', aCallback);
+            sinon.assert.calledWith(loadInstrumentedFile, 'mapped_resource', 'external_resource', aCallback);
         });
     });
     describe('#listenToWatcher', function() {

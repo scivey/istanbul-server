@@ -39,9 +39,11 @@ describe('instrumentLib', function() {
             istanbulInstrument = stub(istanbul.Instrumenter.prototype, 'instrument');
         });
         it('works', function(done) {
-            istanbulInstrument.callsArgWith(1, null, 'instrumentedCode');
+            istanbulInstrument.callsArgWith(2, null, 'instrumentedCode');
             var code = 'var x = 5; x++; console.log(x);';
-            instrumentLib.instrument(code, function(err, res) {
+            var scriptName = '/js/foo.js';
+            instrumentLib.instrument(code, scriptName, function(err, res) {
+                sinon.assert.calledWithMatch(istanbulInstrument, code, scriptName, sinon.match.func);
                 assert.isNull(err);
                 assert.equal(res, 'instrumentedCode');
                 done();
@@ -57,7 +59,9 @@ describe('instrumentLib', function() {
         it('does not call #instrument on fs error', function(done) {
             var err = {err: true};
             readFile.callsArgWith(2, err, null);
-            instrumentLib.loadInstrumentedFile('foo.js', function(e, res) {
+            var scriptPath = '/dir/js/foo.js';
+            var scriptName = '/js/foo.js';
+            instrumentLib.loadInstrumentedFile(scriptPath, scriptName, function(e, res) {
                 assert.equal(e, err);
                 assert.notOk(res);
                 sinon.assert.notCalled(instrument);
@@ -66,9 +70,12 @@ describe('instrumentLib', function() {
         });
         it('instruments on successful fs#read', function(done) {
             readFile.callsArgWith(2, null, 'something');
-            instrument.callsArgWith(1, null, 'instrumented code');
-            instrumentLib.loadInstrumentedFile('foo.js', function(err, res) {
+            instrument.callsArgWith(2, null, 'instrumented code');
+            var scriptPath = '/dir/js/foo.js';
+            var scriptName = '/js/foo.js';
+            instrumentLib.loadInstrumentedFile(scriptPath, scriptName, function(err, res) {
                 assert.equal(res, 'instrumented code');
+                sinon.assert.calledWithMatch(instrument, 'something', scriptName, sinon.match.func);
                 done();
             });
         });

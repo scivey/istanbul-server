@@ -34,7 +34,7 @@ module.exports = function(grunt) {
                 src: 'Gruntfile.js'
             },
             test: {
-                src: ['test/**/*.js'],
+                src: ['test/**/*.js', 'integration_tests/**/*.js'],
                 options: {
                     globals: {
                         describe: true,

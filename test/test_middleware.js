@@ -113,11 +113,11 @@ describe('middleware', function() {
                 assert.equal(instrumenter.inRootDir, joinFunc);
                 var err = {err: true};
                 var instrumented = {instrumented: true};
-                stubs.loadInstrumentedFile.callsArgWith(1, err, instrumented);
+                stubs.loadInstrumentedFile.callsArgWith(2, err, instrumented);
                 instrumenter.get('foo.js', function(e, i) {
                     assert.equal(e, err);
                     assert.equal(i, instrumented);
-                    sinon.assert.calledWithMatch(stubs.loadInstrumentedFile, 'mapped_path.js', sinon.match.func);
+                    sinon.assert.calledWithMatch(stubs.loadInstrumentedFile, 'mapped_path.js', 'foo.js', sinon.match.func);
                 });
             });
         });
